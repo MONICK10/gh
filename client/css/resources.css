@@ -1,0 +1,8 @@
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+#calendar-notes {
+    max-height: 250px;
+    overflow-y: auto;
+}

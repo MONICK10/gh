@@ -1,0 +1,156 @@
+/* --- Global Styles & Variables --- */
+:root {
+    --primary-color: #4A90E2;
+    --secondary-color: #50E3C2;
+    --background-color: #F4F7F6;
+    --card-background: #FFFFFF;
+    --text-color: #333;
+    --text-light: #777;
+    --border-color: #E0E0E0;
+    --danger-color: #E74C3C;
+    --success-color: #2ECC71;
+    --font-family: 'Poppins', sans-serif;
+}
+
+/* Basic Reset */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+.app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* --- Sidebar Navigation --- */
+.sidebar {
+    width: 240px;
+    background-color: var(--card-background);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+}
+
+.sidebar .logo {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.sidebar ul {
+    list-style-type: none;
+    flex-grow: 1;
+}
+
+.sidebar ul li a {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    text-decoration: none;
+    color: var(--text-light);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.sidebar ul li a i {
+    margin-right: 15px;
+    width: 20px;
+    text-align: center;
+}
+
+.sidebar ul li.active a,
+.sidebar ul li a:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.logout-btn {
+    background: none;
+    border: 1px solid var(--danger-color);
+    color: var(--danger-color);
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 1rem;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.logout-btn:hover {
+    background-color: var(--danger-color);
+    color: white;
+}
+.logout-btn i {
+    margin-right: 8px;
+}
+
+/* --- Main Content Area --- */
+.main-content {
+    flex-grow: 1;
+    padding: 30px;
+    overflow-y: auto;
+}
+
+.main-content header {
+    margin-bottom: 30px;
+}
+
+.main-content header h1 {
+    font-size: 2rem;
+    font-weight: 600;
+}
+
+.main-content header p {
+    color: var(--text-light);
+}
+
+/* --- Reusable Components --- */
+.btn {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: background-color 0.3s;
+}
+
+.btn:hover {
+    background-color: #357ABD;
+}
+
+.card {
+    background-color: var(--card-background);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.error {
+    color: var(--danger-color);
+    font-size: 0.9rem;
+    margin-top: 5px;
+    text-align: center;
+}
+
+.success {
+    color: var(--success-color);
+    font-size: 0.9rem;
+    margin-top: 10px;
+}

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Discussion - MindEase</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body class="min-h-screen bg-gray-50">
+
+<header class="bg-indigo-700 shadow-md sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+        <div class="flex items-center space-x-4">
+            <i data-lucide="heart-pulse" class="w-8 h-8 text-white"></i>
+            <h1 class="text-2xl font-bold text-white tracking-tight">MindEase</h1>
+        </div>
+
+        <!-- Navbar -->
+        <nav class="hidden md:flex space-x-4 items-center">
+            <a href="index.html" class="px-3 py-2 text-sm font-medium rounded-lg bg-indigo-800 text-white">Discussion</a>
+
+            <!-- Department Dropdown -->
+            <div class="relative group">
+                <button class="px-3 py-2 text-sm font-medium rounded-lg text-indigo-200 hover:bg-indigo-600">
+                    Department ▼
+                </button>
+                <div class="absolute hidden group-hover:block bg-white shadow-lg rounded-lg mt-2 w-40 z-20">
+                    <a href="department.html?dept=CSE" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">CSE</a>
+                    <a href="department.html?dept=ECE" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">ECE</a>
+                    <a href="department.html?dept=Mech" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">Mech</a>
+                    <a href="department.html?dept=Robotics" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">Robotics</a>
+                    <a href="department.html?dept=Agri" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">Agri</a>
+                </div>
+            </div>
+
+            <a href="chat.html" class="px-3 py-2 text-sm font-medium rounded-lg text-indigo-200 hover:bg-indigo-600">AI & Peer Chat</a>
+            <a href="class.html" class="px-3 py-2 text-sm font-medium rounded-lg text-indigo-200 hover:bg-indigo-600">Class</a>
+            <a href="resources.html" class="px-3 py-2 text-sm font-medium rounded-lg text-indigo-200 hover:bg-indigo-600">Resources</a>
+            <a href="profile.html" class="px-3 py-2 text-sm font-medium rounded-lg text-indigo-200 hover:bg-indigo-600">Profile</a>
+        </nav>
+
+        <button id="logout-btn" class="px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-600 transition duration-200">Logout</button>
+    </div>
+</header>
+
+<main id="main-content" class="p-4 sm:p-6 lg:p-8">
+    <div class="max-w-4xl mx-auto space-y-6">
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h2 class="text-xl font-bold mb-4 text-gray-800 flex items-center">
+                <i data-lucide="messages-square" class="w-6 h-6 mr-2 text-indigo-500"></i>
+                Discussion Board - Batch 4
+            </h2>
+
+            <!-- Static Discussion Feed -->
+            <div id="discussion-feed" class="space-y-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div class="post bg-white p-4 rounded-lg shadow">
+                    <p><strong>Aravind Prakash:</strong> Anyone attending the Robotics workshop this Friday?</p>
+                </div>
+                <div class="post bg-white p-4 rounded-lg shadow">
+                    <p><strong>Jane Smith:</strong> Reminder: Submit your Mech lab report before Monday.</p>
+                </div>
+                <div class="post bg-white p-4 rounded-lg shadow">
+                    <p><strong>John Doe:</strong> Excited about the cultural fest next week! 🎉</p>
+                </div>
+            </div>
+
+            <!-- Notification -->
+            <div class="relative mb-4">
+                <button id="notif-btn" class="text-white relative">
+                    🔔
+                    <span id="notif-count" class="absolute -top-2 -right-2 bg-red-500 text-xs px-2 rounded-full">0</span>
+                </button>
+                <div id="notif-box" class="hidden absolute right-0 bg-white shadow-lg rounded-lg mt-2 w-64 p-2 z-50">
+                    <!-- Notification items -->
+                </div>
+            </div>
+
+            <!-- Post Input -->
+            <div id="post-input-area">
+                <textarea id="new-post-content" rows="3" placeholder="Share your thoughts or ask a question..."
+                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition"></textarea>
+                <button id="submit-post"
+                    class="mt-3 px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition">
+                    Post to Discussion
+                </button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script src="js/ai-monitor.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

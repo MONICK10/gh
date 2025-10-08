@@ -1,0 +1,20 @@
+/* Hover effect for dropdown links */
+nav .group div a:hover {
+  background-color: #e0e7ff;
+  color: #4f46e5;
+}
+
+/* Scrollbar for feed */
+#department-feed {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+/* Scrollbar styling */
+#department-feed::-webkit-scrollbar {
+  width: 6px;
+}
+#department-feed::-webkit-scrollbar-thumb {
+  background-color: #818cf8;
+  border-radius: 3px;
+}

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class - MindEase</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="js/class.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/class.css">
+</head>
+<body class="min-h-screen bg-gray-50">
+
+    <header class="bg-indigo-700 shadow-md sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <i data-lucide="heart-pulse" class="w-8 h-8 text-white"></i>
+                <h1 class="text-2xl font-bold text-white tracking-tight">MindEase</h1>
+            </div>
+            <nav class="hidden md:flex space-x-4">
+                <a href="index.html" class="px-3 py-2 text-sm font-medium rounded-lg text-indigo-200 hover:bg-indigo-600">Discussion</a>
+                <a href="chat.html" class="px-3 py-2 text-sm font-medium rounded-lg text-indigo-200 hover:bg-indigo-600">AI & Peer Chat</a>
+                <a href="class.html" class="px-3 py-2 text-sm font-medium rounded-lg bg-indigo-800 text-white">Class</a>
+                <a href="resources.html" class="px-3 py-2 text-sm font-medium rounded-lg text-indigo-200 hover:bg-indigo-600">Resources</a>
+                <a href="profile.html" class="px-3 py-2 text-sm font-medium rounded-lg text-indigo-200 hover:bg-indigo-600">Profile</a>
+            </nav>
+            <button id="logout-btn" class="px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-600 transition duration-200">Logout</button>
+        </div>
+    </header>
+
+    <main class="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
+        <h2 class="text-2xl font-bold mb-4 text-gray-800" id="batch-title"></h2>
+        <div id="class-feed" class="space-y-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200"></div>
+        <div class="bg-white p-6 rounded-lg shadow mt-6">
+            <textarea id="new-post-content" placeholder="Share your thoughts..." class="w-full p-3 border rounded-lg mb-2"></textarea>
+<input type="file" id="new-post-file" class="mb-2" accept="image/*,video/*" />
+<button id="submit-post" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Post</button>
+
+        </div>
+
+        <!-- Stress Suggestion Popup -->
+<div id="stress-popup" class="hidden fixed bottom-4 right-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-lg z-50">
+    <p id="stress-message" class="mb-2"></p>
+    <button id="goto-resources" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Go to Resources</button>
+    <button id="close-popup" class="ml-2 px-2 py-1 bg-gray-200 rounded hover:bg-gray-300">✖</button>
+</div>
+
+
+        <div id="ai-chatbox" class="fixed bottom-4 right-4 w-80 h-96 bg-white border rounded-lg shadow-lg overflow-hidden z-50 flex flex-col">
+            <div id="ai-chat-header" class="bg-indigo-600 text-white px-4 py-2 flex justify-between items-center cursor-pointer">
+                <span class="font-semibold">Aura AI</span>
+                <button id="ai-chat-close" class="font-bold text-lg leading-none">×</button>
+            </div>
+            <div id="ai-stress-display" class="p-2 mb-2 rounded text-white font-semibold hidden"></div>
+            <div id="ai-chat-messages" class="p-3 flex-1 overflow-y-auto space-y-2 flex flex-col"></div>
+            <div class="flex border-t border-gray-200 p-2">
+                <input id="ai-chat-input" type="text" placeholder="Type a message..." class="flex-1 px-3 py-1 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                <button id="ai-chat-send" class="ml-2 px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">Send</button>
+            </div>
+        </div>
+    </main>
+
+    
+</body>
+</html>

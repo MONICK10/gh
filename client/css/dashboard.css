@@ -1,0 +1,90 @@
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.card h3 {
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.status-card {
+    text-align: center;
+}
+
+.stress-dial {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    margin: 15px auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: white;
+    background: conic-gradient(var(--danger-color) 0%, var(--danger-color) 90%, #eee 90%, #eee 100%); /* Placeholder */
+}
+
+#stress-message {
+    font-weight: 500;
+}
+
+.mood-selector {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+}
+
+.mood-option {
+    font-size: 2.5rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.mood-option:hover {
+    transform: scale(1.2);
+}
+.mood-option.selected {
+    border: 2px solid var(--primary-color);
+    border-radius: 50%;
+    padding: 5px;
+}
+
+.mood-card p {
+    text-align: center;
+    color: var(--success-color);
+    visibility: hidden;
+}
+
+#ai-suggestions ul {
+    list-style-type: none;
+}
+
+#ai-suggestions li {
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+#ai-suggestions li:last-child {
+    border-bottom: none;
+}
+
+.quick-actions-card .action-link {
+    display: block;
+    padding: 12px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--primary-color);
+    margin-bottom: 10px;
+    font-weight: 500;
+    transition: background-color 0.3s;
+}
+
+.quick-actions-card .action-link:hover {
+    background-color: #e9ecef;
+}

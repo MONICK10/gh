@@ -1,0 +1,25 @@
+/* ADD THIS TO THE END of css/app-style.css */
+
+.history-item {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    text-align: left;
+    color: #374151; /* gray-700 */
+    border-radius: 0.5rem;
+    transition: background-color 0.2s, color 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history-item:hover {
+    background-color: #f3f4f6; /* gray-100 */
+}
+
+.history-item.active {
+    background-color: #4338ca; /* indigo-700 */
+    color: white;
+    font-weight: 600;
+}

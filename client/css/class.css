@@ -1,0 +1,37 @@
+/* Scrollable feed */
+#class-feed {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+/* Scrollbar styling */
+#class-feed::-webkit-scrollbar {
+  width: 6px;
+}
+#class-feed::-webkit-scrollbar-thumb {
+  background-color: #818cf8;
+  border-radius: 3px;
+}
+#ai-chatbox.hidden { display: none; }
+.ai-message { padding: 8px 12px; border-radius: 12px; max-width: 75%; }
+.ai-message.user { background-color: #e5e7eb; margin-left: auto; }
+.ai-message.ai { background-color: #6366f1; color: white; margin-right: auto; }
+#ai-stress-display {
+    position: fixed;       /* Float above everything */
+    top: 10px;             /* Distance from top */
+    left: 50%;             /* Center horizontally */
+    transform: translateX(-50%);  /* Correct horizontal centering */
+    z-index: 9999;         /* On top of chatbox */
+    padding: 12px 20px;
+    border-radius: 8px;
+    background-color: green; /* Default; JS will override */
+    display: none;         /* JS will toggle visibility */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    max-width: 350px;
+    text-align: center;
+}
+#ai-stress-display a {
+    color: white;
+    text-decoration: underline;
+    font-weight: bold;
+}
