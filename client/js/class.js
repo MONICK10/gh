@@ -1,354 +1,254 @@
-// class.js
-const STRESS_KEYWORDS = {
-    // High stress
-    'overwhelmed': 30, 'anxious': 30, 'hopeless': 40, 'failed': 35, 'can\'t': 25,
-    'exhausted': 30, 'drowning': 35, 'lost': 25, 'hate': 20, 'stupid': 25, 'useless': 35,
-    // Medium stress
-    'stressed': 15, 'worried': 15, 'pressure': 15, 'deadline': 10, 'confused': 10, 'tired': 10,
-    // Positive / Calm words
-    'happy': -20, 'great': -20, 'excited': -25, 'solved': -15, 'passed': -25, 'grateful': -15,
-    'relaxed': -30, 'good': -10, 'calm': -20, 'confident': -15, 'joy': -20
-};
-
-document.addEventListener("DOMContentLoaded", () => {
-    // --- USER SESSION CHECK ---
-    const currentUserSession = JSON.parse(localStorage.getItem("currentUser"));
-    let currentUser;
-
-    if (!currentUserSession) {
-        window.location.href = "login.html";
-        return;
+// TF-IDF Implementation
+class TFIDFAnalyzer {
+    constructor() {
+        this.documents = [];
+        this.vocabulary = new Set();
     }
 
-    if (currentUserSession.user) currentUser = currentUserSession.user;
-    else if (currentUserSession.id) currentUser = currentUserSession;
-    else {
-        window.location.href = "login.html";
-        return;
-    }
-
-    const currentUserName = currentUser.name;
-
-    // ---------------- LOGOUT ----------------
-    document.getElementById("logout-btn").addEventListener("click", () => {
-        localStorage.removeItem("currentUser");
-        window.location.href = "login.html";
-    });
-
-    // ---------------- ELEMENTS ----------------
-    const feed = document.getElementById("class-feed");
-    const postInput = document.getElementById("new-post-content");
-    const postBtn = document.getElementById("submit-post");
-    const fileInput = document.getElementById("new-post-file");
-
-    // ---------------- FETCH DISCUSSIONS ----------------
-    async function fetchDiscussions() {
-        try {
-            const res = await fetch(`http://localhost:5006/discussions?batch=${currentUser.batch}&department=${currentUser.department}`);
-            const discussions = await res.json();
-
-            feed.innerHTML = discussions.length === 0
-                ? "<p class='text-gray-500 text-center'>No posts yet. Be the first!</p>"
-                : "";
-
-            discussions.forEach(post => {
-                const div = document.createElement("div");
-                div.className = "p-4 bg-white border border-gray-200 rounded-lg shadow-sm mb-4";
-
-                let mediaHTML = "";
-                if (post.file_path) {
-                    const ext = post.file_path.split(".").pop().toLowerCase();
-                    if (["mp4", "webm", "ogg"].includes(ext)) {
-                        mediaHTML = `<video src="http://localhost:5006/uploads/${post.file_path}" controls class="w-full mt-2 rounded"></video>`;
-                    } else {
-                        mediaHTML = `<img src="http://localhost:5006/uploads/${post.file_path}" class="w-full mt-2 rounded"/>`;
-                    }
-                }
-
-                div.innerHTML = `
-                    <p class="font-semibold text-indigo-700">${post.name}</p>
-                    <p class="text-gray-800">${post.content}</p>
-                    ${mediaHTML}
-                    <button class="like-btn mt-2 text-blue-600 font-semibold" data-id="${post.id}">👍 Like</button> 
-                    <span class="like-count" id="like-count-${post.id}">0</span> Likes
-                    <div class="replies mt-2" id="replies-${post.id}"></div>
-                    <div class="reply-box mt-2">
-                        <input type="text" placeholder="Write a reply..." class="reply-input border p-1 mr-1" />
-                        <input type="file" class="reply-file" />
-                        <button class="reply-send bg-blue-500 text-white px-2 rounded" data-id="${post.id}">Send</button>
-                    </div>
-                `;
-
-                feed.appendChild(div);
-
-                // Fetch likes
-                fetch(`http://localhost:5006/discussions/${post.id}/likes`)
-                    .then(res => res.json())
-                    .then(data => {
-                        document.getElementById(`like-count-${post.id}`).textContent = data.total;
-                    });
-
-                // Fetch replies
-                fetch(`http://localhost:5006/discussions/${post.id}/replies`)
-                    .then(res => res.json())
-                    .then(replies => {
-                        const repliesDiv = document.getElementById(`replies-${post.id}`);
-                        repliesDiv.innerHTML = replies.map(r => {
-                            let replyMedia = "";
-                            if (r.file_path) {
-                                const ext = r.file_path.split(".").pop().toLowerCase();
-                                if (["mp4","webm","ogg"].includes(ext)) {
-                                    replyMedia = `<video src="http://localhost:5006/uploads/${r.file_path}" controls class="w-full mt-1 rounded"></video>`;
-                                } else {
-                                    replyMedia = `<img src="http://localhost:5006/uploads/${r.file_path}" class="w-full mt-1 rounded"/>`;
-                                }
-                            }
-                            return `<p><strong>${r.name}</strong>: ${r.content}</p>${replyMedia}`;
-                        }).join("");
-                    });
-            });
-
-            attachPostEventListeners();
-
-        } catch (err) {
-            console.error("Error fetching discussions:", err);
-            feed.innerHTML = "<p class='text-red-500 text-center'>Failed to load posts.</p>";
-        }
-    }
-
-    // ---------------- NEW POST ----------------
-    postBtn.addEventListener("click", async () => {
-        const content = postInput.value.trim();
-        const file = fileInput.files[0];
-        if (!content && !file) return alert("Enter content or select file.");
-
-        const formData = new FormData();
-        formData.append("user_id", currentUser.id);
-        formData.append("batch", currentUser.batch || "");
-        formData.append("department", currentUser.department || "");
-        formData.append("content", content);
-        formData.append("is_public", false);
-        if (file) formData.append("file", file);
-
-        try {
-            const res = await fetch("http://localhost:5006/discussions", {
-                method: "POST",
-                body: formData
-            });
-
-            const data = await res.json();
-
-            if (data.success) {
-                postInput.value = "";
-                fileInput.value = "";
-
-                // Save for stress analysis
-                const latestPosts = JSON.parse(localStorage.getItem('latestPosts') || "[]");
-                latestPosts.push({ content, name: currentUser.name, timestamp: new Date().toISOString(), file: file ? file.name : null });
-                localStorage.setItem('latestPosts', JSON.stringify(latestPosts));
-
-                // ---------------- AI ANALYSIS ----------------
-                const aiResponse = await getAIResponse(content);
-                addAIMessage(aiResponse, 'ai');
-
-                // ---------------- STRESS SCORE ----------------
-                checkStressAndUpdateResources(content);
-
-                fetchDiscussions();
-            } else {
-                alert(data.message || "Error posting discussion");
-            }
-        } catch (err) {
-            console.error(err);
-            alert("Server error while posting discussion");
-        }
-    });
-
-    // ---------------- LIKE & REPLY HANDLERS ----------------
-    function attachPostEventListeners() {
-        document.querySelectorAll(".like-btn").forEach(btn => {
-            btn.addEventListener("click", async () => {
-                const postId = btn.dataset.id;
-                try {
-                    await fetch(`http://localhost:5006/discussions/${postId}/like`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ user_id: currentUser.id })
-                    });
-                    fetchDiscussions();
-                } catch (err) { console.error(err); }
-            });
-        });
-
-        document.querySelectorAll(".reply-send").forEach(btn => {
-            btn.addEventListener("click", async () => {
-                const postId = btn.dataset.id;
-                const parentDiv = btn.closest(".reply-box");
-                const input = parentDiv.querySelector(".reply-input");
-                const fileInput = parentDiv.querySelector(".reply-file");
-                const content = input.value.trim();
-                const file = fileInput.files[0];
-                if (!content && !file) return;
-
-                const formData = new FormData();
-                formData.append("user_id", currentUser.id);
-                formData.append("content", content);
-                if (file) formData.append("file", file);
-
-                try {
-                    const res = await fetch(`http://localhost:5006/discussions/${postId}/reply`, {
-                        method: "POST",
-                        body: formData
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        input.value = "";
-                        fileInput.value = "";
-
-                        const latestPosts = JSON.parse(localStorage.getItem('latestPosts') || "[]");
-                        latestPosts.push({ content, name: currentUser.name, timestamp: new Date().toISOString(), file: file ? file.name : null });
-                        localStorage.setItem('latestPosts', JSON.stringify(latestPosts));
-
-                        // AI & stress for replies
-                        const aiResponse = await getAIResponse(content);
-                        addAIMessage(aiResponse, 'ai');
-                        checkStressAndUpdateResources(content);
-
-                        fetchDiscussions();
-                    }
-                } catch (err) { console.error(err); }
-            });
+    fit(texts) {
+        this.documents = texts;
+        texts.forEach(text => {
+            const words = this.tokenize(text);
+            words.forEach(word => this.vocabulary.add(word));
         });
     }
 
-    // ---------------- MINI CHATBOX ----------------
-    const aiChatbox = document.getElementById('ai-chatbox');
-    const aiChatMessages = document.getElementById('ai-chat-messages');
-    const aiChatClose = document.getElementById('ai-chat-close');
-    const aiInput = document.getElementById('ai-chat-input');
-    const aiSend = document.getElementById('ai-chat-send');
-
-    aiChatbox.style.display = 'flex';
-    aiChatClose.addEventListener('click', () => aiChatbox.style.display = 'none');
-
-    function addAIMessage(text, sender = 'ai') {
-        const msgDiv = document.createElement('div');
-        msgDiv.className = `p-2 rounded-lg text-sm max-w-xs ${
-            sender === 'user' ? 'bg-indigo-500 text-white self-end' :
-            sender === 'ai' ? 'bg-gray-200 text-gray-800 self-start' :
-            'bg-yellow-100 text-yellow-800 self-center text-xs italic'
-        }`;
-        msgDiv.textContent = text;
-        aiChatMessages.appendChild(msgDiv);
-        aiChatMessages.scrollTop = aiChatMessages.scrollHeight;
-        aiChatbox.style.display = 'flex';
-    }
-
-    const API_KEY = "AIzaSyDaZXhPCwkLX8NRKXe-w9_XRidzQYUHScg";
-    const AI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
-
-    async function getAIResponse(promptText) {
-        addAIMessage('Aura is thinking...', 'thinking');
-
-        const payload = {
-            systemInstruction: { parts: [{ text: "You are Aura, a supportive AI assistant for student discussions." }] },
-            contents: [{ parts: [{ text: promptText }] }]
-        };
-
-        try {
-            const response = await fetch(AI_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-
-            const thinkingMsg = Array.from(aiChatMessages.children).find(c => c.textContent.includes('thinking'));
-            if (thinkingMsg) thinkingMsg.remove();
-
-            if (!response.ok) throw new Error(`AI API returned status ${response.status}`);
-            const data = await response.json();
-            return data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't understand that.";
-
-        } catch (err) {
-            console.error("AI API error:", err);
-            const thinkingMsg = Array.from(aiChatMessages.children).find(c => c.textContent.includes('thinking'));
-            if (thinkingMsg) thinkingMsg.remove();
-            return "⚠️ Error connecting to AI.";
-        }
-    }
-
-    async function sendUserMessage() {
-        const text = aiInput.value.trim();
-        if (!text) return;
-        addAIMessage(text, 'user');
-        aiInput.value = '';
-        const aiResponse = await getAIResponse(text);
-        addAIMessage(aiResponse, 'ai');
-    }
-
-    aiSend.addEventListener('click', sendUserMessage);
-    aiInput.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendUserMessage();
-        }
-    });
-
-    // ---------------- STRESS ANALYSIS ----------------
-    function calculateStressFromText(text) {
-        let score = 0;
-        const words = text.toLowerCase().match(/\b\w+\b/g) || [];
-
+    transform(text) {
+        const vector = {};
+        const words = this.tokenize(text);
+        
+        // Calculate TF
         words.forEach(word => {
-            if (STRESS_KEYWORDS[word]) score += STRESS_KEYWORDS[word];
+            vector[word] = (vector[word] || 0) + 1;
         });
-
-        return Math.max(0, Math.min(score, 100)); // clamp 0-100
+        
+        // Apply IDF
+        Array.from(this.vocabulary).forEach(word => {
+            const docCount = this.documents.filter(doc => 
+                doc.toLowerCase().includes(word)).length;
+            const idf = Math.log(this.documents.length / (docCount + 1));
+            if (vector[word]) {
+                vector[word] *= idf;
+            }
+        });
+        
+        return vector;
     }
 
-    function checkStressAndUpdateResources(text) {
-        const score = calculateStressFromText(text);
+    tokenize(text) {
+        return text.toLowerCase().match(/\b\w+\b/g) || [];
+    }
+}
 
-        let suggestedFeature = "breathing exercises";
-        let bgColor = "green";
+// Naive Bayes Implementation
+class NaiveBayesClassifier {
+    constructor() {
+        this.classes = { high: {}, medium: {}, low: {} };
+        this.classCounts = { high: 0, medium: 0, low: 0 };
+    }
 
-        const resourcesLinks = {
-            "meditation + calming music": "resources.html#meditation",
-            "short journaling": "resources.html#journaling",
-            "light stretching": "resources.html#stretching",
-            "breathing exercises": "resources.html#breathing"
+    train(text, label) {
+        const words = text.toLowerCase().match(/\b\w+\b/g) || [];
+        this.classCounts[label]++;
+        
+        words.forEach(word => {
+            this.classes[label][word] = (this.classes[label][word] || 0) + 1;
+        });
+    }
+
+    predict(text) {
+        const words = text.toLowerCase().match(/\b\w+\b/g) || [];
+        const scores = {};
+        
+        Object.keys(this.classes).forEach(label => {
+            scores[label] = Math.log(this.classCounts[label] + 1);
+            words.forEach(word => {
+                const wordCount = this.classes[label][word] || 0;
+                scores[label] += Math.log((wordCount + 1) / 
+                    (this.classCounts[label] + Object.keys(this.classes[label]).length));
+            });
+        });
+        
+        return scores;
+    }
+}
+
+// VADER-inspired Sentiment Analysis
+class SentimentAnalyzer {
+    constructor() {
+        this.positiveWords = new Set(['happy', 'great', 'awesome', 'excellent']);
+        this.negativeWords = new Set(['sad', 'bad', 'terrible', 'awful']);
+        this.intensifiers = new Set(['very', 'extremely', 'really']);
+    }
+
+    analyze(text) {
+        const words = text.toLowerCase().split(' ');
+        let score = 0;
+        let intensity = 1;
+
+        for (let i = 0; i < words.length; i++) {
+            if (this.intensifiers.has(words[i])) {
+                intensity = 1.5;
+                continue;
+            }
+            if (this.positiveWords.has(words[i])) {
+                score += (1 * intensity);
+            }
+            if (this.negativeWords.has(words[i])) {
+                score -= (1 * intensity);
+            }
+            intensity = 1;
+        }
+
+        return score;
+    }
+}
+
+// Emotion Detection
+class EmotionDetector {
+    constructor() {
+        this.emotions = {
+            joy: ['happy', 'excited', 'great'],
+            sadness: ['sad', 'disappointed', 'unhappy'],
+            anger: ['angry', 'furious', 'mad'],
+            fear: ['scared', 'afraid', 'worried'],
+            stress: ['overwhelmed', 'anxious', 'stressed']
         };
-
-        if (score > 80) { 
-            suggestedFeature = "meditation + calming music"; 
-            bgColor = "red"; 
-        } else if (score > 60) { 
-            suggestedFeature = "short journaling"; 
-            bgColor = "yellow"; 
-        } else if (score > 40) { 
-            suggestedFeature = "light stretching"; 
-            bgColor = "blue"; 
-        } else if (score > 0) {   
-            suggestedFeature = "breathing exercises"; 
-            bgColor = "orange"; 
-        }
-
-        const featureWithStory = `${suggestedFeature} + story listening`;
-        const link = resourcesLinks[suggestedFeature] || "resources.html";
-
-        localStorage.setItem('lastStressSuggestion', JSON.stringify({ score, suggestedFeature: featureWithStory }));
-
-        const popup = document.getElementById('ai-stress-display');
-        if (popup) {
-            popup.innerHTML = `Stress Score: ${score} | Suggested: <a href="${link}" class="underline text-white font-bold" target="_blank">${featureWithStory}</a>`;
-            popup.style.backgroundColor = bgColor;
-            popup.style.display = 'block'; // float above chatbox
-        }
     }
 
-    // ---------------- INITIAL GREETING ----------------
-    addAIMessage("👋 Hello! I'm Aura. I'll react to posts here, or you can chat with me directly.");
+    detect(text) {
+        const words = text.toLowerCase().match(/\b\w+\b/g) || [];
+        const scores = {};
+        
+        Object.keys(this.emotions).forEach(emotion => {
+            scores[emotion] = words.filter(word => 
+                this.emotions[emotion].includes(word)).length;
+        });
+        
+        return scores;
+    }
+}
 
-    // ---------------- FETCH DISCUSSIONS ON PAGE LOAD ----------------
-    fetchDiscussions();
-});
+// Anomaly Detection
+class AnomalyDetector {
+    constructor(threshold = 2) {
+        this.threshold = threshold;
+        this.history = [];
+    }
+
+    addScore(score) {
+        this.history.push(score);
+        if (this.history.length > 30) this.history.shift();
+    }
+
+    isAnomaly(score) {
+        if (this.history.length < 5) return false;
+        
+        const mean = this.history.reduce((a, b) => a + b) / this.history.length;
+        const std = Math.sqrt(this.history.reduce((a, b) => 
+            a + Math.pow(b - mean, 2), 0) / this.history.length);
+        
+        return Math.abs(score - mean) > (this.threshold * std);
+    }
+}
+
+// Trend Analysis
+class TrendAnalyzer {
+    constructor() {
+        this.scores = [];
+        this.timestamps = [];
+    }
+
+    addDataPoint(score, timestamp = new Date()) {
+        this.scores.push(score);
+        this.timestamps.push(timestamp);
+    }
+
+    getMovingAverage(window = 5) {
+        if (this.scores.length < window) return null;
+        
+        const recent = this.scores.slice(-window);
+        return recent.reduce((a, b) => a + b) / window;
+    }
+
+    getTrend() {
+        if (this.scores.length < 2) return 'insufficient data';
+        const recent = this.scores.slice(-2);
+        return recent[1] > recent[0] ? 'increasing' : 'decreasing';
+    }
+}
+
+// Ensemble Model
+class StressEnsemble {
+    constructor() {
+        this.tfidf = new TFIDFAnalyzer();
+        this.naiveBayes = new NaiveBayesClassifier();
+        this.sentiment = new SentimentAnalyzer();
+        this.emotion = new EmotionDetector();
+        this.anomaly = new AnomalyDetector();
+        this.trend = new TrendAnalyzer();
+    }
+
+    async analyze(text) {
+        // Get individual model predictions
+        const tfidfVector = this.tfidf.transform(text);
+        const nbScores = this.naiveBayes.predict(text);
+        const sentimentScore = this.sentiment.analyze(text);
+        const emotions = this.emotion.detect(text);
+
+        // Combine scores (weighted average)
+        const stressScore = this.calculateEnsembleScore(
+            tfidfVector, nbScores, sentimentScore, emotions
+        );
+
+        // Check for anomalies
+        const isAnomaly = this.anomaly.isAnomaly(stressScore);
+        this.anomaly.addScore(stressScore);
+        this.trend.addDataPoint(stressScore);
+
+        return {
+            final_stress_score: stressScore,
+            dominant_emotion: this.getDominantEmotion(emotions),
+            sentiment: sentimentScore,
+            is_anomaly: isAnomaly,
+            trend: this.trend.getTrend(),
+            confidence: this.calculateConfidence(emotions),
+            suggestion: this.generateSuggestion(stressScore, emotions),
+            method: 'ensemble'
+        };
+    }
+
+    calculateEnsembleScore(tfidf, nb, sentiment, emotions) {
+        // Weighted combination of all signals
+        const stressEmotion = emotions.stress || 0;
+        const negativeSignals = -sentiment;
+        
+        return Math.min(100, Math.max(0, 
+            (stressEmotion * 30) + 
+            (negativeSignals * 20) + 
+            (nb.high * 30) + 
+            (Object.keys(tfidf).length * 2)
+        ));
+    }
+
+    getDominantEmotion(emotions) {
+        return Object.entries(emotions).reduce((a, b) => 
+            b[1] > a[1] ? b : a)[0];
+    }
+
+    calculateConfidence(emotions) {
+        const total = Object.values(emotions).reduce((a, b) => a + b, 0);
+        const max = Math.max(...Object.values(emotions));
+        return total ? (max / total) * 100 : 50;
+    }
+
+    generateSuggestion(score, emotions) {
+        if (score > 80) return "🚨 Critical stress detected. Please consider professional help.";
+        if (score > 60) return "⚠️ High stress. Try deep breathing exercises.";
+        if (score > 40) return "📝 Moderate stress. Consider journaling.";
+        return "✅ Manageable stress levels. Keep up the good work!";
+    }
+}
+
+// Export for use in main code
+window.StressEnsemble = StressEnsemble;
