@@ -1,354 +1,772 @@
-// class.js
-const STRESS_KEYWORDS = {
-    // High stress
-    'overwhelmed': 30, 'anxious': 30, 'hopeless': 40, 'failed': 35, 'can\'t': 25,
-    'exhausted': 30, 'drowning': 35, 'lost': 25, 'hate': 20, 'stupid': 25, 'useless': 35,
-    // Medium stress
-    'stressed': 15, 'worried': 15, 'pressure': 15, 'deadline': 10, 'confused': 10, 'tired': 10,
-    // Positive / Calm words
-    'happy': -20, 'great': -20, 'excited': -25, 'solved': -15, 'passed': -25, 'grateful': -15,
-    'relaxed': -30, 'good': -10, 'calm': -20, 'confident': -15, 'joy': -20
-};
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Stress Detection - Discussion Platform</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-document.addEventListener("DOMContentLoaded", () => {
-    // --- USER SESSION CHECK ---
-    const currentUserSession = JSON.parse(localStorage.getItem("currentUser"));
-    let currentUser;
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
 
-    if (!currentUserSession) {
-        window.location.href = "login.html";
-        return;
-    }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
 
-    if (currentUserSession.user) currentUser = currentUserSession.user;
-    else if (currentUserSession.id) currentUser = currentUserSession;
-    else {
-        window.location.href = "login.html";
-        return;
-    }
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
 
-    const currentUserName = currentUser.name;
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
 
-    // ---------------- LOGOUT ----------------
-    document.getElementById("logout-btn").addEventListener("click", () => {
-        localStorage.removeItem("currentUser");
-        window.location.href = "login.html";
-    });
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
 
-    // ---------------- ELEMENTS ----------------
-    const feed = document.getElementById("class-feed");
-    const postInput = document.getElementById("new-post-content");
-    const postBtn = document.getElementById("submit-post");
-    const fileInput = document.getElementById("new-post-file");
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
 
-    // ---------------- FETCH DISCUSSIONS ----------------
-    async function fetchDiscussions() {
-        try {
-            const res = await fetch(`http://localhost:5006/discussions?batch=${currentUser.batch}&department=${currentUser.department}`);
-            const discussions = await res.json();
+        .stat-card h3 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
 
-            feed.innerHTML = discussions.length === 0
-                ? "<p class='text-gray-500 text-center'>No posts yet. Be the first!</p>"
-                : "";
+        .stat-card p {
+            opacity: 0.9;
+        }
 
-            discussions.forEach(post => {
-                const div = document.createElement("div");
-                div.className = "p-4 bg-white border border-gray-200 rounded-lg shadow-sm mb-4";
+        .input-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
 
-                let mediaHTML = "";
-                if (post.file_path) {
-                    const ext = post.file_path.split(".").pop().toLowerCase();
-                    if (["mp4", "webm", "ogg"].includes(ext)) {
-                        mediaHTML = `<video src="http://localhost:5006/uploads/${post.file_path}" controls class="w-full mt-2 rounded"></video>`;
-                    } else {
-                        mediaHTML = `<img src="http://localhost:5006/uploads/${post.file_path}" class="w-full mt-2 rounded"/>`;
+        .user-input {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-top: 15px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-section {
+            display: none;
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .result-section.show {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .stress-meter {
+            position: relative;
+            height: 40px;
+            background: linear-gradient(to right, #4ade80 0%, #fbbf24 50%, #ef4444 100%);
+            border-radius: 20px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .stress-indicator {
+            position: absolute;
+            top: -10px;
+            width: 4px;
+            height: 60px;
+            background: #000;
+            transition: left 0.5s ease;
+        }
+
+        .stress-indicator::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -6px;
+            width: 16px;
+            height: 16px;
+            background: #000;
+            border-radius: 50%;
+        }
+
+        .score-display {
+            text-align: center;
+            font-size: 3em;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .score-display.green { color: #4ade80; }
+        .score-display.yellow { color: #fbbf24; }
+        .score-display.red { color: #ef4444; }
+
+        .model-scores {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .model-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #ddd;
+        }
+
+        .model-card h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        .model-card .score {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .keyword-tag {
+            background: #667eea;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+
+        .suggestion-box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+            margin: 20px 0;
+        }
+
+        .suggestion-box h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .explanation-box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            white-space: pre-line;
+            line-height: 1.6;
+        }
+
+        .history-section {
+            margin-top: 30px;
+        }
+
+        .history-item {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 5px solid #ddd;
+        }
+
+        .history-item.green { border-left-color: #4ade80; }
+        .history-item.yellow { border-left-color: #fbbf24; }
+        .history-item.red { border-left-color: #ef4444; }
+
+        .history-item .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .history-item .text {
+            color: #666;
+            font-style: italic;
+            margin-bottom: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 30px 0;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 5px solid #c33;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 0.9em;
+            font-weight: bold;
+            z-index: 1000;
+        }
+
+        .connection-status.connected {
+            background: #4ade80;
+            color: white;
+        }
+
+        .connection-status.disconnected {
+            background: #ef4444;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status disconnected" id="connectionStatus">⚠️ Checking connection...</div>
+
+    <div class="container">
+        <h1>🧠 Student Stress Detection</h1>
+        <p class="subtitle">AI-Powered Discussion Monitoring & Mental Health Support</p>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3 id="totalAnalyses">0</h3>
+                <p>Total Analyses</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="avgStress">--</h3>
+                <p>Average Stress</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="highStressCount">0</h3>
+                <p>High Stress Alerts</p>
+            </div>
+        </div>
+
+        <div class="input-section">
+            <div class="user-input">
+                <input type="text" id="userId" placeholder="Enter your Student ID (e.g., student_123)" value="student_demo">
+            </div>
+            <textarea id="messageInput" placeholder="Type your message or thought here... 
+
+Examples:
+- 'I'm feeling overwhelmed with all these assignments'
+- 'Really stressed about the exam tomorrow'
+- 'Feeling great and confident today!'"></textarea>
+            <button class="btn" id="analyzeBtn">🔍 Analyze Stress Level</button>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Analyzing with ML models...</p>
+            </div>
+        </div>
+
+        <div class="history-section">
+            <h2>📜 Recent Analysis History</h2>
+            <div id="historyContainer">
+                <p style="text-align: center; color: #999; padding: 20px;">No history yet. Start by analyzing a message!</p>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="stressChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_URL = 'http://localhost:8080/api';
+        let stressChart = null;
+        let historyData = [];
+        let isBackendConnected = false;
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Initializing application...');
+            
+            // Check backend connection
+            checkBackendConnection();
+            
+            // Initialize chart
+            initChart();
+            
+            // Load initial data
+            loadStats();
+            
+            // Add event listeners
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const messageInput = document.getElementById('messageInput');
+            
+            if (analyzeBtn) {
+                analyzeBtn.addEventListener('click', function() {
+                    analyzeStress();
+                });
+            }
+            
+            if (messageInput) {
+                messageInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter' && e.ctrlKey) {
+                        analyzeStress();
                     }
+                });
+            }
+        }
+
+        async function checkBackendConnection() {
+            const statusEl = document.getElementById('connectionStatus');
+            
+            try {
+                const response = await fetch(`${API_URL}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Backend connected:', data);
+                    isBackendConnected = true;
+                    statusEl.textContent = '✅ Backend Connected';
+                    statusEl.className = 'connection-status connected';
+                    
+                    setTimeout(() => {
+                        statusEl.style.display = 'none';
+                    }, 3000);
+                } else {
+                    throw new Error('Backend not responding');
+                }
+            } catch (error) {
+                console.error('❌ Backend connection failed:', error);
+                isBackendConnected = false;
+                statusEl.textContent = '❌ Backend Disconnected';
+                statusEl.className = 'connection-status disconnected';
+                
+                showError('Unable to connect to backend server. Please ensure Spring Boot is running on port 8080.');
+            }
+        }
+
+        async function analyzeStress() {
+            const userId = document.getElementById('userId').value.trim();
+            const text = document.getElementById('messageInput').value.trim();
+            const analyzeBtn = document.getElementById('analyzeBtn');
+
+            if (!userId) {
+                alert('⚠️ Please enter your Student ID!');
+                return;
+            }
+
+            if (!text) {
+                alert('⚠️ Please enter a message to analyze!');
+                return;
+            }
+
+            // Check backend connection
+            if (!isBackendConnected) {
+                alert('❌ Backend server is not connected. Please start the Spring Boot application.');
+                return;
+            }
+
+            // Disable button and show loading
+            analyzeBtn.disabled = true;
+            analyzeBtn.textContent = '⏳ Analyzing...';
+
+            const resultSection = document.getElementById('resultSection');
+            resultSection.classList.add('show');
+            resultSection.innerHTML = '<div class="loading"><div class="spinner"></div><p>Analyzing with 4 ML models (TF-IDF, Naive Bayes, LSTM, DistilBERT)...</p></div>';
+
+            try {
+                const response = await fetch(`${API_URL}/analyze-stress`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        text: text,
+                        user_id: userId 
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
-                div.innerHTML = `
-                    <p class="font-semibold text-indigo-700">${post.name}</p>
-                    <p class="text-gray-800">${post.content}</p>
-                    ${mediaHTML}
-                    <button class="like-btn mt-2 text-blue-600 font-semibold" data-id="${post.id}">👍 Like</button> 
-                    <span class="like-count" id="like-count-${post.id}">0</span> Likes
-                    <div class="replies mt-2" id="replies-${post.id}"></div>
-                    <div class="reply-box mt-2">
-                        <input type="text" placeholder="Write a reply..." class="reply-input border p-1 mr-1" />
-                        <input type="file" class="reply-file" />
-                        <button class="reply-send bg-blue-500 text-white px-2 rounded" data-id="${post.id}">Send</button>
-                    </div>
-                `;
+                const result = await response.json();
+                console.log('Analysis result:', result);
+                
+                displayResults(result, text);
+                
+                // Refresh stats and history
+                await loadStats();
+                await loadHistory(userId);
+                
+                // Clear input
+                document.getElementById('messageInput').value = '';
 
-                feed.appendChild(div);
-
-                // Fetch likes
-                fetch(`http://localhost:5006/discussions/${post.id}/likes`)
-                    .then(res => res.json())
-                    .then(data => {
-                        document.getElementById(`like-count-${post.id}`).textContent = data.total;
-                    });
-
-                // Fetch replies
-                fetch(`http://localhost:5006/discussions/${post.id}/replies`)
-                    .then(res => res.json())
-                    .then(replies => {
-                        const repliesDiv = document.getElementById(`replies-${post.id}`);
-                        repliesDiv.innerHTML = replies.map(r => {
-                            let replyMedia = "";
-                            if (r.file_path) {
-                                const ext = r.file_path.split(".").pop().toLowerCase();
-                                if (["mp4","webm","ogg"].includes(ext)) {
-                                    replyMedia = `<video src="http://localhost:5006/uploads/${r.file_path}" controls class="w-full mt-1 rounded"></video>`;
-                                } else {
-                                    replyMedia = `<img src="http://localhost:5006/uploads/${r.file_path}" class="w-full mt-1 rounded"/>`;
-                                }
-                            }
-                            return `<p><strong>${r.name}</strong>: ${r.content}</p>${replyMedia}`;
-                        }).join("");
-                    });
-            });
-
-            attachPostEventListeners();
-
-        } catch (err) {
-            console.error("Error fetching discussions:", err);
-            feed.innerHTML = "<p class='text-red-500 text-center'>Failed to load posts.</p>";
-        }
-    }
-
-    // ---------------- NEW POST ----------------
-    postBtn.addEventListener("click", async () => {
-        const content = postInput.value.trim();
-        const file = fileInput.files[0];
-        if (!content && !file) return alert("Enter content or select file.");
-
-        const formData = new FormData();
-        formData.append("user_id", currentUser.id);
-        formData.append("batch", currentUser.batch || "");
-        formData.append("department", currentUser.department || "");
-        formData.append("content", content);
-        formData.append("is_public", false);
-        if (file) formData.append("file", file);
-
-        try {
-            const res = await fetch("http://localhost:5006/discussions", {
-                method: "POST",
-                body: formData
-            });
-
-            const data = await res.json();
-
-            if (data.success) {
-                postInput.value = "";
-                fileInput.value = "";
-
-                // Save for stress analysis
-                const latestPosts = JSON.parse(localStorage.getItem('latestPosts') || "[]");
-                latestPosts.push({ content, name: currentUser.name, timestamp: new Date().toISOString(), file: file ? file.name : null });
-                localStorage.setItem('latestPosts', JSON.stringify(latestPosts));
-
-                // ---------------- AI ANALYSIS ----------------
-                const aiResponse = await getAIResponse(content);
-                addAIMessage(aiResponse, 'ai');
-
-                // ---------------- STRESS SCORE ----------------
-                checkStressAndUpdateResources(content);
-
-                fetchDiscussions();
-            } else {
-                alert(data.message || "Error posting discussion");
+            } catch (error) {
+                console.error('Analysis error:', error);
+                showError('Failed to analyze stress. Error: ' + error.message);
+            } finally {
+                // Re-enable button
+                analyzeBtn.disabled = false;
+                analyzeBtn.textContent = '🔍 Analyze Stress Level';
             }
-        } catch (err) {
-            console.error(err);
-            alert("Server error while posting discussion");
         }
-    });
 
-    // ---------------- LIKE & REPLY HANDLERS ----------------
-    function attachPostEventListeners() {
-        document.querySelectorAll(".like-btn").forEach(btn => {
-            btn.addEventListener("click", async () => {
-                const postId = btn.dataset.id;
-                try {
-                    await fetch(`http://localhost:5006/discussions/${postId}/like`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ user_id: currentUser.id })
-                    });
-                    fetchDiscussions();
-                } catch (err) { console.error(err); }
+        function displayResults(result, originalText) {
+            const resultSection = document.getElementById('resultSection');
+            
+            // Safely get keywords
+            const keywords = result.top_keywords || [];
+            const keywordsHtml = keywords.length > 0 
+                ? keywords.map(kw => `<span class="keyword-tag">${escapeHtml(kw)}</span>`).join('')
+                : '<span style="color: #999;">No specific keywords detected</span>';
+            
+            // Safely get models
+            const models = result.models || {
+                tfidf_logreg: 0,
+                naive_bayes: 0,
+                lstm_gru: 0,
+                distilbert: 0
+            };
+            
+            // Build result HTML
+            resultSection.innerHTML = `
+                <h2>📊 Analysis Results</h2>
+                
+                <div class="score-display ${result.color_code || 'yellow'}">${result.final_stress_score || 0}/100</div>
+                
+                <div class="stress-meter">
+                    <div class="stress-indicator" style="left: ${result.final_stress_score || 0}%"></div>
+                </div>
+
+                <div class="model-scores">
+                    <div class="model-card">
+                        <h4>TF-IDF + Logistic</h4>
+                        <div class="score">${models.tfidf_logreg || 0}</div>
+                    </div>
+                    <div class="model-card">
+                        <h4>Naive Bayes</h4>
+                        <div class="score">${models.naive_bayes || 0}</div>
+                    </div>
+                    <div class="model-card">
+                        <h4>LSTM/GRU</h4>
+                        <div class="score">${models.lstm_gru || 0}</div>
+                    </div>
+                    <div class="model-card">
+                        <h4>DistilBERT</h4>
+                        <div class="score">${models.distilbert || 0}</div>
+                    </div>
+                </div>
+
+                <div class="suggestion-box">
+                    <h3>💡 Personalized Suggestion</h3>
+                    <p>${escapeHtml(result.suggestion || 'No suggestion available')}</p>
+                </div>
+
+                <div class="explanation-box">${escapeHtml(result.explanation || 'No explanation available')}</div>
+
+                <h4>🏷️ Key Stress Indicators</h4>
+                <div class="keywords">${keywordsHtml}</div>
+
+                <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 10px;">
+                    <strong>Confidence:</strong> ${result.confidence || 0}% | 
+                    <strong>Emotion:</strong> ${(result.dominant_emotion || 'unknown').replace(/_/g, ' ')} |
+                    <strong>Level:</strong> ${(result.stress_level || 'unknown').toUpperCase()}
+                </div>
+            `;
+            
+            // Add to history
+            historyData.unshift({
+                timestamp: new Date().toISOString(),
+                score: result.final_stress_score || 0,
+                emotion: result.dominant_emotion || 'unknown',
+                color: result.color_code || 'yellow',
+                text: originalText
             });
-        });
+            
+            updateChart();
+        }
 
-        document.querySelectorAll(".reply-send").forEach(btn => {
-            btn.addEventListener("click", async () => {
-                const postId = btn.dataset.id;
-                const parentDiv = btn.closest(".reply-box");
-                const input = parentDiv.querySelector(".reply-input");
-                const fileInput = parentDiv.querySelector(".reply-file");
-                const content = input.value.trim();
-                const file = fileInput.files[0];
-                if (!content && !file) return;
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_URL}/stress-stats?days=7`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load stats');
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.stats) {
+                    document.getElementById('totalAnalyses').textContent = data.stats.total_analyses || 0;
+                    
+                    const avgStress = data.stats.total_analyses > 0 
+                        ? data.stats.average_stress.toFixed(1) 
+                        : '--';
+                    document.getElementById('avgStress').textContent = avgStress;
+                    
+                    // Count high stress from local history
+                    const highStress = historyData.filter(h => h.score > 70).length;
+                    document.getElementById('highStressCount').textContent = highStress;
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
 
-                const formData = new FormData();
-                formData.append("user_id", currentUser.id);
-                formData.append("content", content);
-                if (file) formData.append("file", file);
+        async function loadHistory(userId) {
+            try {
+                const response = await fetch(`${API_URL}/stress-history?userId=${userId}&limit=10`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load history');
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.history && data.history.length > 0) {
+                    const container = document.getElementById('historyContainer');
+                    container.innerHTML = data.history.map(item => {
+                        const colorClass = item.finalScore >= 71 ? 'red' : item.finalScore >= 41 ? 'yellow' : 'green';
+                        const dateStr = new Date(item.timestamp).toLocaleString();
+                        const shortText = item.text.substring(0, 100) + (item.text.length > 100 ? '...' : '');
+                        
+                        return `
+                            <div class="history-item ${colorClass}">
+                                <div class="header">
+                                    <strong>Score: ${item.finalScore}/100</strong>
+                                    <span>${dateStr}</span>
+                                </div>
+                                <div class="text">"${escapeHtml(shortText)}"</div>
+                                <div style="margin-top: 10px;">
+                                    <span style="background: #667eea; color: white; padding: 4px 8px; border-radius: 5px; font-size: 0.85em;">
+                                        ${(item.emotion || 'unknown').replace(/_/g, ' ')}
+                                    </span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
 
-                try {
-                    const res = await fetch(`http://localhost:5006/discussions/${postId}/reply`, {
-                        method: "POST",
-                        body: formData
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        input.value = "";
-                        fileInput.value = "";
-
-                        const latestPosts = JSON.parse(localStorage.getItem('latestPosts') || "[]");
-                        latestPosts.push({ content, name: currentUser.name, timestamp: new Date().toISOString(), file: file ? file.name : null });
-                        localStorage.setItem('latestPosts', JSON.stringify(latestPosts));
-
-                        // AI & stress for replies
-                        const aiResponse = await getAIResponse(content);
-                        addAIMessage(aiResponse, 'ai');
-                        checkStressAndUpdateResources(content);
-
-                        fetchDiscussions();
+        function initChart() {
+            const ctx = document.getElementById('stressChart');
+            
+            if (!ctx) {
+                console.error('Chart canvas not found');
+                return;
+            }
+            
+            stressChart = new Chart(ctx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Stress Level Over Time',
+                        data: [],
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Stress Trend Analysis',
+                            font: {
+                                size: 16
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Stress Score (0-100)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Analysis Entry'
+                            }
+                        }
                     }
-                } catch (err) { console.error(err); }
+                }
             });
-        });
-    }
-
-    // ---------------- MINI CHATBOX ----------------
-    const aiChatbox = document.getElementById('ai-chatbox');
-    const aiChatMessages = document.getElementById('ai-chat-messages');
-    const aiChatClose = document.getElementById('ai-chat-close');
-    const aiInput = document.getElementById('ai-chat-input');
-    const aiSend = document.getElementById('ai-chat-send');
-
-    aiChatbox.style.display = 'flex';
-    aiChatClose.addEventListener('click', () => aiChatbox.style.display = 'none');
-
-    function addAIMessage(text, sender = 'ai') {
-        const msgDiv = document.createElement('div');
-        msgDiv.className = `p-2 rounded-lg text-sm max-w-xs ${
-            sender === 'user' ? 'bg-indigo-500 text-white self-end' :
-            sender === 'ai' ? 'bg-gray-200 text-gray-800 self-start' :
-            'bg-yellow-100 text-yellow-800 self-center text-xs italic'
-        }`;
-        msgDiv.textContent = text;
-        aiChatMessages.appendChild(msgDiv);
-        aiChatMessages.scrollTop = aiChatMessages.scrollHeight;
-        aiChatbox.style.display = 'flex';
-    }
-
-    const API_KEY = "AIzaSyDaZXhPCwkLX8NRKXe-w9_XRidzQYUHScg";
-    const AI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
-
-    async function getAIResponse(promptText) {
-        addAIMessage('Aura is thinking...', 'thinking');
-
-        const payload = {
-            systemInstruction: { parts: [{ text: "You are Aura, a supportive AI assistant for student discussions." }] },
-            contents: [{ parts: [{ text: promptText }] }]
-        };
-
-        try {
-            const response = await fetch(AI_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-
-            const thinkingMsg = Array.from(aiChatMessages.children).find(c => c.textContent.includes('thinking'));
-            if (thinkingMsg) thinkingMsg.remove();
-
-            if (!response.ok) throw new Error(`AI API returned status ${response.status}`);
-            const data = await response.json();
-            return data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't understand that.";
-
-        } catch (err) {
-            console.error("AI API error:", err);
-            const thinkingMsg = Array.from(aiChatMessages.children).find(c => c.textContent.includes('thinking'));
-            if (thinkingMsg) thinkingMsg.remove();
-            return "⚠️ Error connecting to AI.";
-        }
-    }
-
-    async function sendUserMessage() {
-        const text = aiInput.value.trim();
-        if (!text) return;
-        addAIMessage(text, 'user');
-        aiInput.value = '';
-        const aiResponse = await getAIResponse(text);
-        addAIMessage(aiResponse, 'ai');
-    }
-
-    aiSend.addEventListener('click', sendUserMessage);
-    aiInput.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendUserMessage();
-        }
-    });
-
-    // ---------------- STRESS ANALYSIS ----------------
-    function calculateStressFromText(text) {
-        let score = 0;
-        const words = text.toLowerCase().match(/\b\w+\b/g) || [];
-
-        words.forEach(word => {
-            if (STRESS_KEYWORDS[word]) score += STRESS_KEYWORDS[word];
-        });
-
-        return Math.max(0, Math.min(score, 100)); // clamp 0-100
-    }
-
-    function checkStressAndUpdateResources(text) {
-        const score = calculateStressFromText(text);
-
-        let suggestedFeature = "breathing exercises";
-        let bgColor = "green";
-
-        const resourcesLinks = {
-            "meditation + calming music": "resources.html#meditation",
-            "short journaling": "resources.html#journaling",
-            "light stretching": "resources.html#stretching",
-            "breathing exercises": "resources.html#breathing"
-        };
-
-        if (score > 80) { 
-            suggestedFeature = "meditation + calming music"; 
-            bgColor = "red"; 
-        } else if (score > 60) { 
-            suggestedFeature = "short journaling"; 
-            bgColor = "yellow"; 
-        } else if (score > 40) { 
-            suggestedFeature = "light stretching"; 
-            bgColor = "blue"; 
-        } else if (score > 0) {   
-            suggestedFeature = "breathing exercises"; 
-            bgColor = "orange"; 
         }
 
-        const featureWithStory = `${suggestedFeature} + story listening`;
-        const link = resourcesLinks[suggestedFeature] || "resources.html";
-
-        localStorage.setItem('lastStressSuggestion', JSON.stringify({ score, suggestedFeature: featureWithStory }));
-
-        const popup = document.getElementById('ai-stress-display');
-        if (popup) {
-            popup.innerHTML = `Stress Score: ${score} | Suggested: <a href="${link}" class="underline text-white font-bold" target="_blank">${featureWithStory}</a>`;
-            popup.style.backgroundColor = bgColor;
-            popup.style.display = 'block'; // float above chatbox
+        function updateChart() {
+            if (!stressChart || historyData.length === 0) return;
+            
+            const last10 = historyData.slice(0, 10).reverse();
+            const labels = last10.map((_, i) => `#${i + 1}`);
+            const data = last10.map(h => h.score);
+            
+            stressChart.data.labels = labels;
+            stressChart.data.datasets[0].data = data;
+            stressChart.update();
         }
-    }
 
-    // ---------------- INITIAL GREETING ----------------
-    addAIMessage("👋 Hello! I'm Aura. I'll react to posts here, or you can chat with me directly.");
+        function showError(message) {
+            const resultSection = document.getElementById('resultSection');
+            resultSection.classList.add('show');
+            resultSection.innerHTML = `<div class="error">❌ ${escapeHtml(message)}</div>`;
+        }
 
-    // ---------------- FETCH DISCUSSIONS ON PAGE LOAD ----------------
-    fetchDiscussions();
-});
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Retry connection every 10 seconds if disconnected
+        setInterval(function() {
+            if (!isBackendConnected) {
+                checkBackendConnection();
+            }
+        }, 10000);
+    </script>
+</body>
+</html>
