@@ -1,4 +1,4 @@
-// class.js
+// class.js - Enhanced with ML Stress Detection
 const STRESS_KEYWORDS = {
     // High stress
     'overwhelmed': 30, 'anxious': 30, 'hopeless': 40, 'failed': 35, 'can\'t': 25,
@@ -10,7 +10,80 @@ const STRESS_KEYWORDS = {
     'relaxed': -30, 'good': -10, 'calm': -20, 'confident': -15, 'joy': -20
 };
 
-document.addEventListener("DOMContentLoaded", () => {
+// ============ NEW: ML API Configuration ============
+const ML_API_URL = 'http://localhost:8080/api';
+let mlBackendAvailable = false;
+
+// Check if ML backend is available
+async function checkMLBackend() {
+    try {
+        const response = await fetch(`${ML_API_URL}/health`, { method: 'GET' });
+        mlBackendAvailable = response.ok;
+        console.log(mlBackendAvailable ? '✅ ML Backend Connected' : '⚠️ ML Backend Not Available');
+        return mlBackendAvailable;
+    } catch (error) {
+        console.log('⚠️ ML Backend Not Available - Using fallback keyword analysis');
+        mlBackendAvailable = false;
+        return false;
+    }
+}
+
+// ============ NEW: ML Stress Analysis Function ============
+async function analyzeStressWithML(text, userId) {
+    // If ML backend is not available, use fallback
+    if (!mlBackendAvailable) {
+        return {
+            success: false,
+            final_stress_score: calculateStressFromText(text),
+            method: 'keyword-based',
+            dominant_emotion: 'unknown',
+            suggestion: getBasicSuggestion(calculateStressFromText(text))
+        };
+    }
+
+    try {
+        const response = await fetch(`${ML_API_URL}/analyze-stress`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                text: text,
+                user_id: userId 
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('ML API failed');
+        }
+
+        const result = await response.json();
+        return {
+            success: true,
+            final_stress_score: result.final_stress_score,
+            dominant_emotion: result.dominant_emotion,
+            suggestion: result.suggestion,
+            models: result.models,
+            top_keywords: result.top_keywords,
+            confidence: result.confidence,
+            method: 'ml-ensemble'
+        };
+
+    } catch (error) {
+        console.error('ML Analysis failed, using fallback:', error);
+        return {
+            success: false,
+            final_stress_score: calculateStressFromText(text),
+            method: 'keyword-based',
+            dominant_emotion: 'unknown',
+            suggestion: getBasicSuggestion(calculateStressFromText(text))
+        };
+    }
+}
+
+// ============ Your Original Code Below ============
+document.addEventListener("DOMContentLoaded", async () => {
+    // Check ML backend availability on load
+    await checkMLBackend();
+
     // --- USER SESSION CHECK ---
     const currentUserSession = JSON.parse(localStorage.getItem("currentUser"));
     let currentUser;
@@ -151,8 +224,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 const aiResponse = await getAIResponse(content);
                 addAIMessage(aiResponse, 'ai');
 
-                // ---------------- STRESS SCORE ----------------
-                checkStressAndUpdateResources(content);
+                // ============ ENHANCED: ML STRESS ANALYSIS ============
+                const mlResult = await analyzeStressWithML(content, currentUser.id);
+                checkStressAndUpdateResources(content, mlResult);
 
                 fetchDiscussions();
             } else {
@@ -209,10 +283,12 @@ document.addEventListener("DOMContentLoaded", () => {
                         latestPosts.push({ content, name: currentUser.name, timestamp: new Date().toISOString(), file: file ? file.name : null });
                         localStorage.setItem('latestPosts', JSON.stringify(latestPosts));
 
-                        // AI & stress for replies
+                        // AI & ML stress for replies
                         const aiResponse = await getAIResponse(content);
                         addAIMessage(aiResponse, 'ai');
-                        checkStressAndUpdateResources(content);
+                        
+                        const mlResult = await analyzeStressWithML(content, currentUser.id);
+                        checkStressAndUpdateResources(content, mlResult);
 
                         fetchDiscussions();
                     }
@@ -294,7 +370,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // ---------------- STRESS ANALYSIS ----------------
+    // ============ ENHANCED: STRESS ANALYSIS WITH ML ============
     function calculateStressFromText(text) {
         let score = 0;
         const words = text.toLowerCase().match(/\b\w+\b/g) || [];
@@ -306,8 +382,20 @@ document.addEventListener("DOMContentLoaded", () => {
         return Math.max(0, Math.min(score, 100)); // clamp 0-100
     }
 
-    function checkStressAndUpdateResources(text) {
-        const score = calculateStressFromText(text);
+    function getBasicSuggestion(score) {
+        if (score > 80) return "🚨 High stress detected. Try meditation or talk to a counselor.";
+        if (score > 60) return "⚠️ Moderate stress. Consider short journaling or breathing exercises.";
+        if (score > 40) return "💡 Mild stress. Try light stretching or a quick break.";
+        if (score > 20) return "✅ Low stress. A breathing exercise can help maintain calm.";
+        return "🌟 Great mental state! Keep it up!";
+    }
+
+    function checkStressAndUpdateResources(text, mlResult = null) {
+        // Use ML result if available, otherwise fallback
+        const score = mlResult ? mlResult.final_stress_score : calculateStressFromText(text);
+        const suggestion = mlResult ? mlResult.suggestion : getBasicSuggestion(score);
+        const emotion = mlResult ? mlResult.dominant_emotion : 'unknown';
+        const method = mlResult ? mlResult.method : 'keyword-based';
 
         let suggestedFeature = "breathing exercises";
         let bgColor = "green";
@@ -336,18 +424,55 @@ document.addEventListener("DOMContentLoaded", () => {
         const featureWithStory = `${suggestedFeature} + story listening`;
         const link = resourcesLinks[suggestedFeature] || "resources.html";
 
-        localStorage.setItem('lastStressSuggestion', JSON.stringify({ score, suggestedFeature: featureWithStory }));
+        // Save to localStorage with ML data
+        localStorage.setItem('lastStressSuggestion', JSON.stringify({ 
+            score, 
+            suggestedFeature: featureWithStory,
+            emotion,
+            method,
+            mlData: mlResult
+        }));
 
         const popup = document.getElementById('ai-stress-display');
         if (popup) {
-            popup.innerHTML = `Stress Score: ${score} | Suggested: <a href="${link}" class="underline text-white font-bold" target="_blank">${featureWithStory}</a>`;
+            // Enhanced display with ML info
+            const mlBadge = method === 'ml-ensemble' 
+                ? `<span style="background: #4ade80; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; margin-left: 5px;">🤖 ML</span>` 
+                : `<span style="background: #fbbf24; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; margin-left: 5px;">📊 Basic</span>`;
+            
+            const emotionBadge = emotion !== 'unknown' 
+                ? `<span style="margin-left: 5px; font-size: 0.85em;">😟 ${emotion.replace('_', ' ')}</span>` 
+                : '';
+
+            popup.innerHTML = `
+                Stress Score: ${score}/100 ${mlBadge} ${emotionBadge}<br>
+                <small>${suggestion}</small><br>
+                <a href="${link}" class="underline text-white font-bold" target="_blank">→ ${featureWithStory}</a>
+            `;
             popup.style.backgroundColor = bgColor;
-            popup.style.display = 'block'; // float above chatbox
+            popup.style.display = 'block';
+            popup.style.padding = '10px';
+            popup.style.borderRadius = '8px';
+        }
+
+        // Show detailed ML results in console
+        if (mlResult && mlResult.success) {
+            console.log('🤖 ML Analysis Results:', {
+                score: mlResult.final_stress_score,
+                emotion: mlResult.dominant_emotion,
+                confidence: mlResult.confidence,
+                models: mlResult.models,
+                keywords: mlResult.top_keywords
+            });
         }
     }
 
     // ---------------- INITIAL GREETING ----------------
-    addAIMessage("👋 Hello! I'm Aura. I'll react to posts here, or you can chat with me directly.");
+    const greetingMsg = mlBackendAvailable 
+        ? "👋 Hello! I'm Aura with ML-powered stress detection. I'll analyze your posts with 4 AI models!"
+        : "👋 Hello! I'm Aura. I'll react to posts here, or you can chat with me directly.";
+    
+    addAIMessage(greetingMsg);
 
     // ---------------- FETCH DISCUSSIONS ON PAGE LOAD ----------------
     fetchDiscussions();
